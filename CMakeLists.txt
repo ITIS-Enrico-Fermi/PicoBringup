@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 include(pico_sdk_import.cmake)
+include(pico_flash_uf2.cmake)
 
 project(picobringup C CXX ASM)
 

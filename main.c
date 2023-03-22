@@ -101,60 +101,28 @@ void i2c_slave_setup() {
     i2c_slave_init(i2c1, SLAVE_ADDR, &i2c_slave_request_handler);
 }
 
-void i2c_slave_loop() {
-    if(data_available) {
-        putchar(i2c_slave_mempool[mempool_index-1]);
-        data_available = 0;
-        mempool_index = 0;
-    }
-}
-
-
-static uint8_t master_mempool[256];
-
-void i2c_master_loop() {
-    static int mode = 0;
-
-    if(mode == 0) {
-        int written = i2c_write_timeout_us(i2c0, SLAVE_ADDR, "hellohello", 10, false, 1000000);
-        printf("Written: %d\n", written);
-        mode = 1;
-    } else {
-        int readbytes = i2c_read_timeout_us(i2c0, SLAVE_ADDR, master_mempool, 11, false, 1000000);
-        if(readbytes > 0) {
-            printf("From master: ");
-            for(int i=0; i<readbytes; i++)
-                putchar(master_mempool[i]);
-            putchar('\n');
-        }
-        mode = 0;
-    }
-}
-
 
 int main() {
 
     stdio_init_all();
 
-    blink_setup();
-    button_setup();
-
     i2c_master_setup();
     i2c_slave_setup();
 
-    while(true) {
-        blink_loop();
-        //i2c_slave_loop();
+    int master_readbytes = 0;
+    char read_string[100];
 
-        if(gpio_get(21) == 0) {
-            //pressed
-            puts("Pressed!");
+    while(true) {
+        master_readbytes = i2c_read_blocking(i2c0, SLAVE_ADDR, read_string, RESPONSE_LEN, false);
+        
+        if(master_readbytes > 0) {
+            read_string[master_readbytes] = 0;
+            printf("%s", read_string);
+        } else {
+            printf("Read return code: %d\n", master_readbytes);
         }
 
-        i2c_master_loop();
-        printf("Data requested: %d, data received: %d\n", data_requested, data_available);
-
-        sleep_ms(200);
+        sleep_ms(1000);
     }
 
 
