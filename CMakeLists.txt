@@ -12,6 +12,8 @@ pico_sdk_init()
 
 add_executable(picobringup
   main.c
+  i2c_peripheral/i2c_peripheral.c
+  i2c_peripheral/ringbuf.c
 )
 
 pico_enable_stdio_usb(picobringup 1)
