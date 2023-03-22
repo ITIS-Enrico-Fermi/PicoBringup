@@ -18,3 +18,4 @@ typedef struct {
  * passed in config struct.
 */
 void i2c_peripheral_setup(i2c_peripheral_config_t *config);
+void i2c_peripheral_loop();

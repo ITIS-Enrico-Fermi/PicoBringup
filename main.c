@@ -5,6 +5,7 @@
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
 #include "pico/i2c_slave.h"
+#include "i2c_peripheral/i2c_peripheral.h"
 
 void blink_setup() {
     gpio_init(22);
@@ -62,7 +63,7 @@ static int slave_resp_index = 0;
 /**
  * Process an I2C slave interrupt
 */
-void i2c_slave_request_handler(i2c_inst_t *i2c, i2c_slave_event_t evt) {
+static void i2c_slave_request_handler(i2c_inst_t *i2c, i2c_slave_event_t evt) {
     switch(evt) {
         case I2C_SLAVE_RECEIVE:
             if(mempool_index < 256) {
@@ -107,22 +108,47 @@ int main() {
     stdio_init_all();
 
     i2c_master_setup();
-    i2c_slave_setup();
+
+    i2c_peripheral_config_t conf = {
+        .sda_pin = I2C_SLAVE_SDA,
+        .scl_pin = I2C_SLAVE_SCL,
+        .speed = 100000,
+        .use_internal_pullup = true,
+        .controller = i2c1,
+        .address = SLAVE_ADDR
+    };
+    i2c_peripheral_setup(&conf);
 
     int master_readbytes = 0;
     char read_string[100];
 
-    while(true) {
-        master_readbytes = i2c_read_blocking(i2c0, SLAVE_ADDR, read_string, RESPONSE_LEN, false);
-        
-        if(master_readbytes > 0) {
-            read_string[master_readbytes] = 0;
-            printf("%s", read_string);
-        } else {
-            printf("Read return code: %d\n", master_readbytes);
-        }
+    int mode = 0;
+    int i = 0;
 
-        sleep_ms(1000);
+    while(true) {
+        i2c_peripheral_loop();
+
+        if(mode == 1) {
+            master_readbytes = i2c_read_blocking(i2c0, SLAVE_ADDR, read_string, 1, false);
+
+            if(master_readbytes > 0) {
+                read_string[master_readbytes] = 0;
+                printf("%x", read_string[0]);
+            } else {
+                printf("Read return code: %d\n", master_readbytes);
+            }
+
+            mode = 0;
+        } else {
+            i2c_write_blocking(i2c0, SLAVE_ADDR, (uint8_t *)&i, 1, false);
+
+            i++;
+            if(i == 256)
+                i=0;
+            mode = 1;
+        }
+        
+        sleep_ms(100);
     }
 
 
